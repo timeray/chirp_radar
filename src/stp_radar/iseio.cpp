@@ -7,7 +7,7 @@ using namespace std;
 namespace ise {
 
 enum class ParameterCode {
-	reserved = 0,     // reserved
+    reserved = 0,     // reserved
     mode,             // mode
     step,             // decimation step
     number_all,       // number of samples

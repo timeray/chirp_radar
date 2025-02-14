@@ -3,10 +3,11 @@
 
 
 __global__ void gpu_print() {
-	printf("Hello, GPU-accelarated world!\n");
+    printf("Hello, GPU-accelarated world!\n");
 }
 
 
 void test_gpu_print() {
-	gpu_print<<<1, 1>>>();
+    gpu_print<<<1, 1>>>();
+    cudaDeviceSynchronize();
 }
