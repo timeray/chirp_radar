@@ -21,7 +21,6 @@ add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 
 target_link_libraries(TestIseIo PUBLIC tutorial_compiler_flags gtest_main)
 target_link_libraries(ChirpProc PUBLIC tutorial_compiler_flags CUDA::cufft)
-add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 
 target_include_directories(ChirpProc PUBLIC src)
 target_include_directories(TestFFT PUBLIC src)
