@@ -5,6 +5,9 @@ project(Tutorial
     LANGUAGES C CXX CUDA
     DESCRIPTION "Libraries and programs to process radar data for studies in solar-terrestrial physics"
     )
+
+find_package(CUDAToolkit REQUIRED)
+
 add_executable(ChirpProc src/chirp_proc.cpp src/gpu_ops/core.cu)
 
 #add_executable(TestIseIo tests/test_ise_io.cpp src/stp_radar/iseio.cpp)
@@ -14,6 +17,7 @@ add_library(tutorial_compiler_flags INTERFACE)
 target_compile_features(tutorial_compiler_flags INTERFACE cxx_std_20)
 
 target_link_libraries(TestIseIo PUBLIC tutorial_compiler_flags gtest_main)
+target_link_libraries(ChirpProc PUBLIC tutorial_compiler_flags CUDA::cufft)
 add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 
 target_include_directories(ChirpProc PUBLIC src)
