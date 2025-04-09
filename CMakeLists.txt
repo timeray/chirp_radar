@@ -8,19 +8,19 @@ project(Tutorial
 
 find_package(CUDAToolkit REQUIRED)
 
-add_executable(ChirpProc src/chirp_proc.cpp src/gpu_ops/core.cu)
-
-#add_executable(TestIseIo tests/test_ise_io.cpp src/radar/iseio.cpp)
+add_executable(ChirpProc src/chirp_proc.cu)
 add_executable(TestIseIo tests/test_ise_io.cpp)
-
-add_executable(TestFFT "src/gpu_ops/tests/fft_test.cu")
+add_executable(TestFFT src/gpu_ops/tests/fft_test.cu)
 
 add_library(tutorial_compiler_flags INTERFACE)
 target_compile_features(tutorial_compiler_flags INTERFACE cxx_std_20)
 add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
+#add_subdirectory(external/armadillo-code EXCLUDE_FROM_ALL)
+add_subdirectory(external/fftw EXCLUDE_FROM_ALL)
 
-target_link_libraries(TestIseIo PUBLIC tutorial_compiler_flags gtest_main)
 target_link_libraries(ChirpProc PUBLIC tutorial_compiler_flags CUDA::cufft)
+target_link_libraries(TestIseIo PUBLIC tutorial_compiler_flags gtest_main)
+target_link_libraries(TestFFT PUBLIC tutorial_compiler_flags gtest_main CUDA::cufft fftw3 fftw3f)
 
 target_include_directories(ChirpProc PUBLIC src)
 target_include_directories(TestFFT PUBLIC src)
