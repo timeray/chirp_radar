@@ -68,6 +68,10 @@ std::vector<std::complex<T>> movingFFT1d(const std::vector<std::complex<T>>& ser
 
     // Size in each dimension
     int n[] = {static_cast<int>(n_fft)};
+    //int* inembed = NULL;
+    //int* onembed = NULL;
+    int inembed[] = {static_cast<int>(n_fft)};
+    int onembed[] = {static_cast<int>(n_fft)};
     
     cufftHandle plan;
     checkCufftError(cufftCreate(&plan));
@@ -75,10 +79,10 @@ std::vector<std::complex<T>> movingFFT1d(const std::vector<std::complex<T>>& ser
         &plan,
         1,          // 1D transform
         n,
-        NULL,       // Input embedding (contiguous)
+        inembed,    // Input embedding (contiguous)
         1,          // Input stride
         1,          // Input distance
-        NULL,       // Output embedding (contiguous)
+        onembed,    // Output embedding
         1,          // Output stride
         n_fft,      // Output distance
         fft_prec,
