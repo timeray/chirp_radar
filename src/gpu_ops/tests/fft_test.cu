@@ -119,7 +119,7 @@ TEST(MainTestSuite, TestMovingFFTFloat) {
     using data_t = std::complex<float_t>;
     std::vector<data_t> series(n_series);
 
-    for (size_t i = 0; i < n_fft; ++i) {
+    for (size_t i = 0; i < n_series; ++i) {
         float_t v = static_cast<float_t>(i);
         series[i] = data_t(v, -v);
     }
@@ -137,6 +137,57 @@ TEST(MainTestSuite, TestMovingFFTFloat) {
         fftwf_execute_dft(
             p,
             reinterpret_cast<fftwf_complex*>(series.data() + i),
+            reinterpret_cast<fftwf_complex*>(out_fftw3.data() + i * n_fft)
+        );
+    }
+    fftwf_destroy_plan(p);
+
+    for (size_t i = 0; i < expected_out_size; ++i) {
+        EXPECT_TRUE(isClose(out_cufft[i].real(), out_fftw3[i].real(), float_t(7e-2), float_t(2e-2)))
+                        << "Vectors differ at [" << i << "]";
+        EXPECT_TRUE(isClose(out_cufft[i].imag(), out_fftw3[i].imag(), float_t(7e-2), float_t(2e-2)))
+                        << "Vectors differ at [" << i << "]";
+    }
+}
+
+
+
+TEST(MainTestSuite, TestChirpFFTFloat) {
+    size_t n_series = 8;
+    size_t n_fft = 4;
+    size_t n_wins = n_series - n_fft + 1;
+    size_t expected_out_size = n_wins * n_fft;
+
+    using float_t = float;
+    using data_t = std::complex<float_t>;
+    std::vector<data_t> series(n_series);
+    std::vector<data_t> chirp(n_fft);
+
+    for (size_t i = 0; i < n_series; ++i) {
+        float_t v = static_cast<float_t>(i);
+        series[i] = data_t(v, -v);
+        if (i < n_fft) {
+            chirp[i] = data_t(v, -v);
+        }
+    }
+
+    std::vector<data_t> out_cufft = chirpFFT(series, chirp);
+    ASSERT_EQ(out_cufft.size(), expected_out_size) << "Output array has incorrect size";
+
+    // Check against FFTW3
+    std::vector<data_t> out_fftw3(expected_out_size);
+
+    fftwf_plan p;
+    p = fftwf_plan_dft_1d(n_fft, NULL, NULL, FFTW_FORWARD, FFTW_ESTIMATE);
+    std::vector<data_t> tmp(n_fft);
+    for (size_t i = 0; i < n_wins; ++i) {
+        // Recreating plan is slow, but it is just to test FFT manually, without any complicated plans
+        for (size_t j = 0; j < n_fft; ++j) {
+            tmp[j] = series[i + j] * chirp[j];
+        }
+        fftwf_execute_dft(
+            p,
+            reinterpret_cast<fftwf_complex*>(tmp.data() + i),
             reinterpret_cast<fftwf_complex*>(out_fftw3.data() + i * n_fft)
         );
     }

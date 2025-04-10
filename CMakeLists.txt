@@ -18,9 +18,14 @@ add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 #add_subdirectory(external/armadillo-code EXCLUDE_FROM_ALL)
 add_subdirectory(external/fftw EXCLUDE_FROM_ALL)
 
+# Required for legacy callbacks in cufft (linking against static library)
+set_target_properties(TestFFT PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON
+                                         CUDA_SEPARABLE_COMPILATION ON)
+
 target_link_libraries(ChirpProc PUBLIC tutorial_compiler_flags CUDA::cufft)
 target_link_libraries(TestIseIo PUBLIC tutorial_compiler_flags gtest_main)
-target_link_libraries(TestFFT PUBLIC tutorial_compiler_flags gtest_main CUDA::cufft fftw3 fftw3f)
+# Linking against static cufft library for legacy cufft callbacks
+target_link_libraries(TestFFT PUBLIC tutorial_compiler_flags gtest_main CUDA::cufft_static fftw3 fftw3f)
 
 target_include_directories(ChirpProc PUBLIC src)
 target_include_directories(TestFFT PUBLIC src)
