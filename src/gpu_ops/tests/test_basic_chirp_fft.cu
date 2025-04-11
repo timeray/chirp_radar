@@ -7,7 +7,7 @@
 #include <fftw3.h>
 #include <cufft.h>
 
-#include "gpu_ops/core.cuh"
+#include "gpu_ops/tests/basic_chirp_fft.cuh"
 #include "gpu_ops/utils.cuh"
 
 
@@ -185,7 +185,7 @@ TYPED_TEST(TypedTestSuite, TestChirpFFT) {
     std::vector<data_t> out_fftw3(expected_out_size);
     for (size_t i = 0; i < n_wins; ++i) {
         for (size_t j = 0; j < n_fft; ++j) {
-            tmp[j] = series[i + j] * chirp[j];
+            tmp[j] = series[i + j] * std::conj(chirp[j]);
         }
         typed_fftw_execute_dft(
             p,
