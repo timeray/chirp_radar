@@ -116,7 +116,7 @@ std::vector<std::complex<T>> movingFFT1d(const std::vector<std::complex<T>>& ser
 
 
 template <typename cufftComplexT>
-__device__ __host__ cufftComplex complexMul(cufftComplexT a, cufftComplexT b) {
+__device__ __host__ cufftComplexT complexMul(cufftComplexT a, cufftComplexT b) {
     return {a.x * b.x - a.y * b.y, a.y * b.x + a.x * b.y};
 }
 
@@ -139,12 +139,12 @@ __device__ cufftComplexT kerChirpMultiplyLoadCallback(void* data_in, size_t offs
 
     size_t batch_index = static_cast<float>(offset) / static_cast<float>(n_fft);
     size_t batch_offset = offset % n_fft;
-    printf("n_fft = %llu, offset = %llu, idx = %llu, batch_offset = %llu, series = %f, chirp = %f\n", n_fft, offset, batch_index, batch_offset, series[batch_index + batch_offset].x, chirp[batch_offset].x);
     return complexMul(series[batch_index + batch_offset], chirp[batch_offset]);
 }
 
 
-__device__ __managed__ cufftCallbackLoadC chirpMultiplyCallbackPtr = kerChirpMultiplyLoadCallback;
+__device__ __managed__ cufftCallbackLoadC chirpMultiplyCallbackCPtr = kerChirpMultiplyLoadCallback;
+__device__ __managed__ cufftCallbackLoadZ chirpMultiplyCallbackZPtr = kerChirpMultiplyLoadCallback;
 
 
 template <typename T>
@@ -194,14 +194,17 @@ std::vector<std::complex<T>> chirpFFT(const std::vector<std::complex<T>>& series
     checkCudaError(cudaMalloc((void **)&device_params, sizeof(pars_t)));
     checkCudaError(cudaMemcpy(device_params, &host_params, sizeof(pars_t), cudaMemcpyHostToDevice));
 
-    checkCufftError(cufftXtSetCallback(
-        plan, (void**)&chirpMultiplyCallbackPtr, CUFFT_CB_LD_COMPLEX, (void**)&device_params
-    ));
     
     // Execute FFT
     if constexpr (std::is_same_v<T, float>) {
+        checkCufftError(cufftXtSetCallback(
+            plan, (void**)&chirpMultiplyCallbackCPtr, CUFFT_CB_LD_COMPLEX, (void**)&device_params
+        ));
         checkCufftError(cufftExecC2C(plan, d_data, d_out, CUFFT_FORWARD));
     } else {
+        checkCufftError(cufftXtSetCallback(
+            plan, (void**)&chirpMultiplyCallbackZPtr, CUFFT_CB_LD_COMPLEX_DOUBLE, (void**)&device_params
+        ));
         checkCufftError(cufftExecZ2Z(plan, d_data, d_out, CUFFT_FORWARD));
     }
 
