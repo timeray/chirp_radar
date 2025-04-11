@@ -152,8 +152,8 @@ TYPED_TEST(TypedTestSuite, TestMovingFFT) {
 
 
 TYPED_TEST(TypedTestSuite, TestChirpFFT) {
-    size_t n_series = 8;
-    size_t n_fft = 4;
+    size_t n_series = 2048;
+    size_t n_fft = 1024;
     size_t n_wins = n_series - n_fft + 1;
     size_t expected_out_size = n_wins * n_fft;
 
@@ -163,7 +163,7 @@ TYPED_TEST(TypedTestSuite, TestChirpFFT) {
     std::vector<data_t> chirp(n_fft);
 
     for (size_t i = 0; i < n_series; ++i) {
-        float_t v = static_cast<float_t>(i);
+        float_t v = static_cast<float_t>(i) / n_series;
         series[i] = data_t(v, -v);
         if (i < n_fft) {
             chirp[i] = data_t(v, -v);
@@ -196,9 +196,9 @@ TYPED_TEST(TypedTestSuite, TestChirpFFT) {
     typed_fftw_destroy_plan(p);
 
     for (size_t i = 0; i < expected_out_size; ++i) {
-        EXPECT_TRUE(isClose(out_cufft[i].real(), out_fftw3[i].real(), float_t(7e-2), float_t(2e-2)))
+        EXPECT_TRUE(isClose(out_cufft[i].real(), out_fftw3[i].real(), float_t(5e-2), float_t(1e-5)))
                         << "Vectors differ at [" << i << "]";
-        EXPECT_TRUE(isClose(out_cufft[i].imag(), out_fftw3[i].imag(), float_t(7e-2), float_t(2e-2)))
+        EXPECT_TRUE(isClose(out_cufft[i].imag(), out_fftw3[i].imag(), float_t(5e-2), float_t(1e-5)))
                         << "Vectors differ at [" << i << "]";
     }
 }

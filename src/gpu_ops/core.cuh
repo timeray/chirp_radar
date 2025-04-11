@@ -193,7 +193,6 @@ std::vector<std::complex<T>> chirpFFT(const std::vector<std::complex<T>>& series
     pars_t* device_params;
     checkCudaError(cudaMalloc((void **)&device_params, sizeof(pars_t)));
     checkCudaError(cudaMemcpy(device_params, &host_params, sizeof(pars_t), cudaMemcpyHostToDevice));
-
     
     // Execute FFT
     if constexpr (std::is_same_v<T, float>) {
