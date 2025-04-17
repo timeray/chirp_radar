@@ -5,7 +5,6 @@
 #include <string>
 #include <iostream>
 
-#include <fftw3.h>
 #include <cufft.h>
 
 #include "gpu_ops/tests/basic_chirp_fft.cuh"
