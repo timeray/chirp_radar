@@ -16,7 +16,7 @@ add_executable(TestIseIo tests/test_ise_io.cpp)
 add_executable(TestFFT src/gpu_ops/tests/test_basic_chirp_fft.cu)
 add_executable(BenchFFT src/gpu_ops/tests/bench_basic_chirp_fft.cu)
 add_executable(BenchFFTEvents src/gpu_ops/tests/bench_basic_chirp_fft_events.cu)
-add_executable(TestCudaCore src/gpu_ops/tests/test_core.cu)
+add_executable(TestCudaCore src/gpu_ops/core.cu src/gpu_ops/tests/test_core.cu)
 
 add_library(tutorial_compiler_flags INTERFACE)
 target_compile_features(tutorial_compiler_flags INTERFACE cxx_std_20)

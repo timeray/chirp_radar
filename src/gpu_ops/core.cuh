@@ -1,16 +1,15 @@
 #pragma once
-//#include <format>
-#include <sstream>
 #include <string_view>
-#include <iostream>
 #include <stdexcept>
+
+#include <cufft.h>
+#include <cufftXt.h>
 
 
 namespace chirp {
 
-void Log(std::string_view str) {
-    std::cout << str << '\n';
-}
+
+void Log(std::string_view str);
 
 
 enum class Status {
@@ -19,17 +18,8 @@ enum class Status {
 };
 
 
-Status handleCudaError(cudaError_t status) {
-    if (status != cudaSuccess) {
-        // auto str = std::format("CUDA RT call failed with {} (code {})", cudaGetErrorString(status), status);
-        std::ostringstream os;
-        os << "CUDA RT call failed with " << cudaGetErrorString(status);
-        auto str = os.str();
-        Log(str);
-        return Status::Error;
-    }
-    return Status::Success;
-}
+Status handleCudaError(cudaError_t status);
+Status handleCufftError(cufftError_t status);
 
 
 class CudaDeviceMemory {
@@ -49,4 +39,24 @@ private:
     size_t m_size;
 };
 
+
+
+class ChirpSpectrumProcessor {
+public:
+    ChirpSpectrumProcessor(size_t n_series, size_t n_fft) : md_chirp(n_series) {
+        handleCufftError(cufftCreate(&m_plan));
+        
+    };
+    ~ChirpSpectrumProcessor() {
+    }
+
+private:
+    cufftHandle m_plan;
+    CudaDeviceMemory md_chirp;
+    CudaDeviceMemory md_series;
+    CudaDeviceMemory md_fft;
+};
+
+
 };  // namespace chirp
+
