@@ -1,6 +1,5 @@
 #include <complex>
 #include <vector>
-#include <cmath>
 #include <type_traits>
 
 #include <benchmark/benchmark.h>
@@ -21,23 +20,19 @@ static void benchChirpFFT(benchmark::State& state) {
     std::vector<data_t> chirp(n_fft);
 
     for (size_t i = 0; i < n_series; ++i) {
-        float_t v = static_cast<T>(i) / n_series;
+        T v = static_cast<T>(i) / T(n_series);
         series[i] = data_t(v, -v);
         if (i < n_fft) {
             chirp[i] = data_t(v, -v);
         }
-    }    
+    }
 
     size_t n_batches = series.size() - n_fft + 1;  // number of batch (transformation) windows
     size_t input_data_size = sizeof(std::complex<T>) * series.size();
     size_t chirp_data_size = sizeof(std::complex<T>) * chirp.size();
     size_t output_data_size = sizeof(std::complex<T>) * n_fft * n_batches;
-    
-    // Precision of complex-to-complex transform
-    cufftType fft_prec = CUFFT_C2C;
-    if constexpr (std::is_same_v<T, double>) {
-        fft_prec = CUFFT_Z2Z;
-    }
+
+    constexpr cufftType fft_prec = fft_precision_v<T>;
 
     int rank = 1;
     int n[] = {static_cast<int>(n_fft)};
@@ -50,7 +45,7 @@ static void benchChirpFFT(benchmark::State& state) {
 
     // Output array (flattened matrix)
     std::vector<std::complex<T>> result(n_batches * n_fft);
-    
+
     using cufft_float_t = std::conditional_t<std::is_same_v<T, float>, cufftComplex, cufftDoubleComplex>;
     cufft_float_t* d_data = nullptr, *d_chirp = nullptr, *d_out = nullptr;
     checkCudaError(cudaMalloc(&d_data, input_data_size));
@@ -63,7 +58,7 @@ static void benchChirpFFT(benchmark::State& state) {
     pars_t* device_params;
     checkCudaError(cudaMalloc((void **)&device_params, sizeof(pars_t)));
     checkCudaError(cudaMemcpy(device_params, &host_params, sizeof(pars_t), cudaMemcpyHostToDevice));
- 
+
     using cufft_cb_t = std::conditional_t<std::is_same_v<T, float>, cufftCallbackLoadC, cufftCallbackLoadZ>;
     cufft_cb_t load_callback_ptr;
 

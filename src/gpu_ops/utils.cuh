@@ -3,6 +3,15 @@
 #include <iostream>
 #include <cufft.h>
 
+
+// Returns the precision of the FFT transform for the given type
+template <typename T>
+constexpr cufftType fft_precision_v = CUFFT_C2C;
+
+template <>
+constexpr cufftType fft_precision_v<double> = CUFFT_Z2Z;
+
+
 // CUDA API error checking
 #define checkCudaError( call )                                                                                           \
     {                                                                                                                  \

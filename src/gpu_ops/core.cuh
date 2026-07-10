@@ -19,7 +19,7 @@ enum class Status {
 
 
 Status handleCudaError(cudaError_t status);
-Status handleCufftError(cufftError_t status);
+Status handleCufftError(cufftResult status);
 
 
 class CudaDeviceMemory {
@@ -43,9 +43,8 @@ private:
 
 class ChirpSpectrumProcessor {
 public:
-    ChirpSpectrumProcessor(size_t n_series, size_t n_fft) : md_chirp(n_series) {
+    ChirpSpectrumProcessor(size_t n_series, size_t n_fft) : md_chirp(n_series), md_series(n_series), md_fft(n_fft) {
         handleCufftError(cufftCreate(&m_plan));
-        
     };
     ~ChirpSpectrumProcessor() {
     }

@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(Tutorial 
+project(Tutorial
     VERSION 0.0.1
     LANGUAGES CXX CUDA
     DESCRIPTION "Libraries and programs to process radar data for studies in solar-terrestrial physics"
     )
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/modules/")
 message(STATUS "PATH: $ENV{FFTW_ROOT}")

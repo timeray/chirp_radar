@@ -24,18 +24,14 @@ static void benchChirpFFT(size_t n_series, size_t n_fft, size_t n_iter = 1000) {
         if (i < n_fft) {
             chirp[i] = data_t(v, -v);
         }
-    }    
+    }
 
     size_t n_batches = series.size() - n_fft + 1;  // number of batch (transformation) windows
     size_t input_data_size = sizeof(std::complex<T>) * series.size();
     size_t chirp_data_size = sizeof(std::complex<T>) * chirp.size();
     size_t output_data_size = sizeof(std::complex<T>) * n_fft * n_batches;
-    
-    // Precision of complex-to-complex transform
-    cufftType fft_prec = CUFFT_C2C;
-    if constexpr (std::is_same_v<T, double>) {
-        fft_prec = CUFFT_Z2Z;
-    }
+
+    constexpr cufftType fft_prec = fft_precision_v<T>;
 
     int rank = 1;
     int n[] = {static_cast<int>(n_fft)};
@@ -48,7 +44,7 @@ static void benchChirpFFT(size_t n_series, size_t n_fft, size_t n_iter = 1000) {
 
     // Output array (flattened matrix)
     std::vector<std::complex<T>> result(n_batches * n_fft);
-    
+
     using cufft_float_t = std::conditional_t<std::is_same_v<T, float>, cufftComplex, cufftDoubleComplex>;
     cufft_float_t* d_data = nullptr, *d_chirp = nullptr, *d_out = nullptr;
     checkCudaError(cudaMalloc(&d_data, input_data_size));
@@ -61,7 +57,7 @@ static void benchChirpFFT(size_t n_series, size_t n_fft, size_t n_iter = 1000) {
     pars_t* device_params;
     checkCudaError(cudaMalloc((void **)&device_params, sizeof(pars_t)));
     checkCudaError(cudaMemcpy(device_params, &host_params, sizeof(pars_t), cudaMemcpyHostToDevice));
- 
+
     using cufft_cb_t = std::conditional_t<std::is_same_v<T, float>, cufftCallbackLoadC, cufftCallbackLoadZ>;
     cufft_cb_t load_callback_ptr;
 
@@ -104,7 +100,7 @@ static void benchChirpFFT(size_t n_series, size_t n_fft, size_t n_iter = 1000) {
     checkCudaError(cudaEventSynchronize(end));
     checkCudaError(cudaEventElapsedTime(&elapsed_time, start, end));
     elapsed_time /= static_cast<float>(n_iter);
-    
+
     std::string type_str;
     if constexpr (std::is_same_v<T, float>) {
         type_str = "float";
@@ -131,4 +127,3 @@ int main() {
     benchChirpFFT<float>(16384, 1024);
     benchChirpFFT<double>(4096, 1024);
 }
-

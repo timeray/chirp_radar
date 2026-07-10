@@ -16,11 +16,7 @@ void simpleFFT1d(const std::vector<std::complex<T>>& series, std::vector<std::co
 
     size_t data_size = sizeof(std::complex<T>) * series.size();
 
-    // Precision of complex-to-complex transform
-    cufftType fft_prec = CUFFT_C2C;
-    if constexpr (std::is_same_v<T, double>) {
-        fft_prec = CUFFT_Z2Z;
-    }
+    constexpr cufftType fft_prec = fft_precision_v<T>;
 
     cufftHandle plan;
     checkCufftError(cufftCreate(&plan));
@@ -60,17 +56,13 @@ std::vector<std::complex<T>> movingFFT1d(const std::vector<std::complex<T>>& ser
     size_t input_data_size = sizeof(std::complex<T>) * series.size();
     size_t output_data_size = sizeof(std::complex<T>) * n_fft * n_batches;
 
-    // Precision of complex-to-complex transform
-    cufftType fft_prec = CUFFT_C2C;
-    if constexpr (std::is_same_v<T, double>) {
-        fft_prec = CUFFT_Z2Z;
-    }
+    constexpr cufftType fft_prec = fft_precision_v<T>;
 
     // Size in each dimension
     int n[] = {static_cast<int>(n_fft)};
     int inembed[] = {static_cast<int>(n_fft)};
     int onembed[] = {static_cast<int>(n_fft)};
-    
+
     cufftHandle plan;
     checkCufftError(cufftCreate(&plan));
     checkCufftError(cufftPlanMany(
@@ -128,7 +120,7 @@ struct ChirpCallbackParams {
 
 
 template <typename cufftComplexT>
-__device__ cufftComplexT kerChirpMultiplyLoadCallback(void* data_in, size_t offset, 
+__device__ cufftComplexT kerChirpMultiplyLoadCallback(void* data_in, size_t offset,
                                                       void* caller_info, void* shared_ptr) {
     using pars_t = const ChirpCallbackParams<cufftComplexT>;
     pars_t* params = static_cast<pars_t*>(caller_info);
@@ -160,17 +152,13 @@ std::vector<std::complex<T>> chirpFFT(const std::vector<std::complex<T>>& series
     size_t chirp_data_size = sizeof(std::complex<T>) * chirp.size();
     size_t output_data_size = sizeof(std::complex<T>) * n_fft * n_batches;
 
-    // Precision of complex-to-complex transform
-    cufftType fft_prec = CUFFT_C2C;
-    if constexpr (std::is_same_v<T, double>) {
-        fft_prec = CUFFT_Z2Z;
-    }
+    constexpr cufftType fft_prec = fft_precision_v<T>;
 
     int rank = 1;
     int n[] = {static_cast<int>(n_fft)};
     int inembed[] = {static_cast<int>(n_fft)};
     int onembed[] = {static_cast<int>(n_fft)};
-    
+
     cufftHandle plan;
     checkCufftError(cufftCreate(&plan));
     checkCufftError(cufftPlanMany(&plan, rank, n, inembed, 1, n_fft, onembed, 1, n_fft, fft_prec, n_batches));
@@ -193,7 +181,7 @@ std::vector<std::complex<T>> chirpFFT(const std::vector<std::complex<T>>& series
     checkCudaError(cudaMalloc((void **)&device_params, sizeof(pars_t)));
     checkCudaError(cudaMemcpy(device_params, &host_params, sizeof(pars_t), cudaMemcpyHostToDevice));
 
-    using cufft_cb_t = std::conditional_t<std::is_same_v<T, float>, cufftCallbackLoadC, cufftCallbackLoadZ>; 
+    using cufft_cb_t = std::conditional_t<std::is_same_v<T, float>, cufftCallbackLoadC, cufftCallbackLoadZ>;
     cufft_cb_t load_callback_ptr;
 
     // Execute FFT
