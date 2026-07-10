@@ -7,7 +7,7 @@ project(Tutorial
     )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/modules/")
-
+message(STATUS "PATH: $ENV{FFTW_ROOT}")
 find_package(FFTW REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
