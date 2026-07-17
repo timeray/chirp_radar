@@ -8,6 +8,7 @@
 #include <cufftXt.h>
 
 #include <gpu_ops/utils.cuh>
+#include <gpu_ops/core.cuh>
 
 
 template <typename T>
@@ -15,33 +16,27 @@ void simpleFFT1d(const std::vector<std::complex<T>>& series, std::vector<std::co
     static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>, "T must be float or double");
 
     size_t data_size = sizeof(std::complex<T>) * series.size();
-
+    using cufft_float_t = std::conditional_t<std::is_same_v<T, float>, cufftComplex, cufftDoubleComplex>;
     constexpr cufftType fft_prec = fft_precision_v<T>;
 
-    cufftHandle plan;
-    checkCufftError(cufftCreate(&plan));
-    checkCufftError(cufftPlan1d(&plan, series.size(), fft_prec, 1));
+    gpu::CufftPlan plan_wrapper;
+    CHECK_CUFFT(cufftPlan1d(&plan_wrapper.get(), series.size(), fft_prec, 1));
 
-    using cufft_float_t = std::conditional_t<std::is_same_v<T, float>, cufftComplex, cufftDoubleComplex>;
-    cufft_float_t* d_data = nullptr, *d_out = nullptr;
-    checkCudaError(cudaMalloc(&d_data, data_size));
-    checkCudaError(cudaMalloc(&d_out, data_size));
+    gpu::CudaDeviceMemory d_data_mem(data_size);
+    gpu::CudaDeviceMemory d_out_mem(data_size);
+    auto* d_data = static_cast<cufft_float_t*>(d_data_mem.get());
+    auto* d_out  = static_cast<cufft_float_t*>(d_out_mem.get());
 
-    checkCudaError(cudaMemcpy(d_data, series.data(), data_size, cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_data, series.data(), data_size, cudaMemcpyHostToDevice));
 
     if constexpr (std::is_same_v<T, float>) {
-        checkCufftError(cufftExecC2C(plan, d_data, d_out, CUFFT_FORWARD));
+        CHECK_CUFFT(cufftExecC2C(plan_wrapper.get(), d_data, d_out, CUFFT_FORWARD));
     } else {
-        checkCufftError(cufftExecZ2Z(plan, d_data, d_out, CUFFT_FORWARD));
+        CHECK_CUFFT(cufftExecZ2Z(plan_wrapper.get(), d_data, d_out, CUFFT_FORWARD));
     }
 
-    checkCudaError(cudaMemcpy(out.data(), d_out, data_size, cudaMemcpyDeviceToHost));
-
-    checkCudaError(cudaDeviceSynchronize());
-
-    checkCudaError(cudaFree(d_data));
-    checkCudaError(cudaFree(d_out));
-    checkCufftError(cufftDestroy(plan));
+    CHECK_CUDA(cudaMemcpy(out.data(), d_out, data_size, cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaDeviceSynchronize());
 }
 
 
@@ -63,10 +58,9 @@ std::vector<std::complex<T>> movingFFT1d(const std::vector<std::complex<T>>& ser
     int inembed[] = {static_cast<int>(n_fft)};
     int onembed[] = {static_cast<int>(n_fft)};
 
-    cufftHandle plan;
-    checkCufftError(cufftCreate(&plan));
-    checkCufftError(cufftPlanMany(
-        &plan,
+    gpu::CufftPlan plan_wrapper;
+    CHECK_CUFFT(cufftPlanMany(
+        &plan_wrapper.get(),
         1,          // 1D transform
         n,          // Shape of transform
         inembed,    // Shape of input data of fft
@@ -83,24 +77,21 @@ std::vector<std::complex<T>> movingFFT1d(const std::vector<std::complex<T>>& ser
     std::vector<std::complex<T>> result(n_batches * n_fft);
 
     using cufft_float_t = std::conditional_t<std::is_same_v<T, float>, cufftComplex, cufftDoubleComplex>;
-    cufft_float_t* d_data = nullptr, *d_out = nullptr;
-    checkCudaError(cudaMalloc(&d_data, input_data_size));
-    checkCudaError(cudaMalloc(&d_out, output_data_size));
-    checkCudaError(cudaMemcpy(d_data, series.data(), input_data_size, cudaMemcpyHostToDevice));
+    gpu::CudaDeviceMemory d_data_mem(input_data_size);
+    gpu::CudaDeviceMemory d_out_mem(output_data_size);
+    auto* d_data = static_cast<cufft_float_t*>(d_data_mem.get());
+    auto* d_out  = static_cast<cufft_float_t*>(d_out_mem.get());
+
+    CHECK_CUDA(cudaMemcpy(d_data, series.data(), input_data_size, cudaMemcpyHostToDevice));
 
     if constexpr (std::is_same_v<T, float>) {
-        checkCufftError(cufftExecC2C(plan, d_data, d_out, CUFFT_FORWARD));
+        CHECK_CUFFT(cufftExecC2C(plan_wrapper.get(), d_data, d_out, CUFFT_FORWARD));
     } else {
-        checkCufftError(cufftExecZ2Z(plan, d_data, d_out, CUFFT_FORWARD));
+        CHECK_CUFFT(cufftExecZ2Z(plan_wrapper.get(), d_data, d_out, CUFFT_FORWARD));
     }
 
-    checkCudaError(cudaMemcpy(result.data(), d_out, output_data_size, cudaMemcpyDeviceToHost));
-
-    checkCudaError(cudaDeviceSynchronize());
-
-    checkCudaError(cudaFree(d_data));
-    checkCudaError(cudaFree(d_out));
-    checkCufftError(cufftDestroy(plan));
+    CHECK_CUDA(cudaMemcpy(result.data(), d_out, output_data_size, cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaDeviceSynchronize());
 
     return result;
 }
@@ -159,27 +150,30 @@ std::vector<std::complex<T>> chirpFFT(const std::vector<std::complex<T>>& series
     int inembed[] = {static_cast<int>(n_fft)};
     int onembed[] = {static_cast<int>(n_fft)};
 
-    cufftHandle plan;
-    checkCufftError(cufftCreate(&plan));
-    checkCufftError(cufftPlanMany(&plan, rank, n, inembed, 1, n_fft, onembed, 1, n_fft, fft_prec, n_batches));
+    gpu::CufftPlan plan_wrapper;
+    CHECK_CUFFT(cufftPlanMany(&plan_wrapper.get(), rank, n, inembed, 1, n_fft, onembed, 1, n_fft, fft_prec, n_batches));
 
     // Output array (flattened matrix)
     std::vector<std::complex<T>> result(n_batches * n_fft);
 
     using cufft_float_t = std::conditional_t<std::is_same_v<T, float>, cufftComplex, cufftDoubleComplex>;
-    cufft_float_t* d_data = nullptr, *d_chirp = nullptr, *d_out = nullptr;
-    checkCudaError(cudaMalloc(&d_data, input_data_size));
-    checkCudaError(cudaMalloc(&d_chirp, chirp_data_size));
-    checkCudaError(cudaMalloc(&d_out, output_data_size));
-    checkCudaError(cudaMemcpy(d_data, series.data(), input_data_size, cudaMemcpyHostToDevice));
-    checkCudaError(cudaMemcpy(d_chirp, chirp.data(), chirp_data_size, cudaMemcpyHostToDevice));
+    gpu::CudaDeviceMemory d_data_mem(input_data_size);
+    gpu::CudaDeviceMemory d_chirp_mem(chirp_data_size);
+    gpu::CudaDeviceMemory d_out_mem(output_data_size);
+    auto* d_data = static_cast<cufft_float_t*>(d_data_mem.get());
+    auto* d_chirp = static_cast<cufft_float_t*>(d_chirp_mem.get());
+    auto* d_out  = static_cast<cufft_float_t*>(d_out_mem.get());
 
-    // Setup callback
+    CHECK_CUDA(cudaMemcpy(d_data, series.data(), input_data_size, cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_chirp, chirp.data(), chirp_data_size, cudaMemcpyHostToDevice));
+
+    // Setup callback parameters on device
     using pars_t = ChirpCallbackParams<cufft_float_t>;
     pars_t host_params{d_chirp, n_fft};
-    pars_t* device_params;
-    checkCudaError(cudaMalloc((void **)&device_params, sizeof(pars_t)));
-    checkCudaError(cudaMemcpy(device_params, &host_params, sizeof(pars_t), cudaMemcpyHostToDevice));
+
+    gpu::CudaDeviceMemory d_params_mem(sizeof(pars_t));
+    auto* device_params = static_cast<pars_t*>(d_params_mem.get());
+    CHECK_CUDA(cudaMemcpy(device_params, &host_params, sizeof(pars_t), cudaMemcpyHostToDevice));
 
     using cufft_cb_t = std::conditional_t<std::is_same_v<T, float>, cufftCallbackLoadC, cufftCallbackLoadZ>;
     cufft_cb_t load_callback_ptr;
@@ -187,26 +181,20 @@ std::vector<std::complex<T>> chirpFFT(const std::vector<std::complex<T>>& series
     // Execute FFT
     if constexpr (std::is_same_v<T, float>) {
         cudaMemcpyFromSymbol(&load_callback_ptr, chirpMultiplyCallbackCPtr, sizeof(load_callback_ptr));
-        checkCufftError(cufftXtSetCallback(
-            plan, (void**)&load_callback_ptr, CUFFT_CB_LD_COMPLEX, (void**)&device_params
+        CHECK_CUFFT(cufftXtSetCallback(
+            plan_wrapper.get(), (void**)&load_callback_ptr, CUFFT_CB_LD_COMPLEX, (void**)&device_params
         ));
-        checkCufftError(cufftExecC2C(plan, d_data, d_out, CUFFT_FORWARD));
+        CHECK_CUFFT(cufftExecC2C(plan_wrapper.get(), d_data, d_out, CUFFT_FORWARD));
     } else {
         cudaMemcpyFromSymbol(&load_callback_ptr, chirpMultiplyCallbackZPtr, sizeof(load_callback_ptr));
-        checkCufftError(cufftXtSetCallback(
-            plan, (void**)&load_callback_ptr, CUFFT_CB_LD_COMPLEX_DOUBLE, (void**)&device_params
+        CHECK_CUFFT(cufftXtSetCallback(
+            plan_wrapper.get(), (void**)&load_callback_ptr, CUFFT_CB_LD_COMPLEX_DOUBLE, (void**)&device_params
         ));
-        checkCufftError(cufftExecZ2Z(plan, d_data, d_out, CUFFT_FORWARD));
+        CHECK_CUFFT(cufftExecZ2Z(plan_wrapper.get(), d_data, d_out, CUFFT_FORWARD));
     }
 
-    checkCudaError(cudaMemcpy(result.data(), d_out, output_data_size, cudaMemcpyDeviceToHost));
-
-    checkCudaError(cudaDeviceSynchronize());
-
-    checkCudaError(cudaFree(device_params));
-    checkCudaError(cudaFree(d_data));
-    checkCudaError(cudaFree(d_out));
-    checkCufftError(cufftDestroy(plan));
+    CHECK_CUDA(cudaMemcpy(result.data(), d_out, output_data_size, cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaDeviceSynchronize());
 
     return result;
 }

@@ -8,7 +8,6 @@
 #include <cufft.h>
 
 #include "gpu_ops/tests/basic_chirp_fft.cuh"
-#include "gpu_ops/utils.cuh"
 
 
 template <typename T>
@@ -97,9 +96,9 @@ TYPED_TEST(TypedTestSuite, TestFFT) {
     typed_fftw_destroy_plan(p);
 
     for (size_t i = 0; i < n_fft; ++i) {
-        EXPECT_TRUE(isClose(out_cufft[i].real(), out_fftw3[i].real(), float_t(1e-3), float_t(1e-5))) 
+        EXPECT_TRUE(isClose(out_cufft[i].real(), out_fftw3[i].real(), float_t(1e-3), float_t(1e-5)))
                         << "Vectors differ at [" << i << "]";
-        EXPECT_TRUE(isClose(out_cufft[i].imag(), out_fftw3[i].imag(), float_t(1e-3), float_t(1e-5))) 
+        EXPECT_TRUE(isClose(out_cufft[i].imag(), out_fftw3[i].imag(), float_t(1e-3), float_t(1e-5)))
                         << "Vectors differ at [" << i << "]";
     }
 }

@@ -4,6 +4,5 @@
 
 
 TEST(MainTestSuite, TestCudaDeviceMemory) {
-    chirp::CudaDeviceMemory(16);
+    gpu::CudaDeviceMemory(16);
 }
-
