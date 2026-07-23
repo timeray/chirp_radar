@@ -74,14 +74,13 @@ TYPED_TEST(TypedTestSuite, TestFFT) {
     using float_t = TypeParam;
     using data_t = std::complex<float_t>;
     std::vector<data_t> series(n_fft);
-    std::vector<data_t> out_cufft(n_fft);
 
     for (size_t i = 0; i < n_fft; ++i) {
         float_t v = static_cast<float_t>(i);
         series[i] = data_t(v, -v);
     }
 
-    simpleFFT1d(series, out_cufft);
+    auto out_cufft = simpleFFT1d(series);
 
     // Check against FFTW3
     std::vector<data_t> out_fftw3(n_fft);
